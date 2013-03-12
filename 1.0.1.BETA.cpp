@@ -1,8 +1,8 @@
 /*
 	Interpreter of numeric expressions
 	Author: Victor Jatobá
-	Baseline: 1.0.0 BETA
-	Date: 17/10/11
+	Baseline: 1.0.1 BETA
+	Date: 20/10/11
 */
 
 #include <cstdio>
@@ -65,6 +65,7 @@ enum tokens stackTokens[100];
 //Tamanho das tabelas
 int digitSize = -1, idSize = -1, keyWordSize = -1;
 int contStr = 0, stackTokensSize = -1, contParenteses = 0;
+int contColum = 0;
 string input;
 
 /*	Utilizado para verificar a existencia de um simbolo 
@@ -72,11 +73,17 @@ string input;
 set <char> specialSymbol;
 set <string> keyWord;
 
+
 // mapa que associa o atomo ao seu token ou vice-versa
 map <string, enum tokens> tipo;
 map <int, string> tipoInverso;
-
-//Preenchimento dos mapas com os tokens e atomos
+map <string, double> idMap;
+/*
+	Interpreter of numeric expressions
+	Author: Victor Jatobá
+	Baseline: 1.0.0 BETA
+	Date: 17/10/11
+*///Preenchimento dos mapas com os tokens e atomos
 void popularTipo();
 void popularTipoInverso();
 
@@ -107,10 +114,10 @@ enum tokens TOP();
 
 //	Retorna o topo da pilha de digitos
 double topPopDigitTable();
-
+/*
 //	Retorna o topo da pilha de Identificadores
 double topPopIdTable();
-
+*/
 //	Verifica se o token eh multiplicacao, divisao ou conjunto
 bool isMultDivConj(enum tokens tk);
 
@@ -128,6 +135,37 @@ double expressao(enum tokens tk);
 
 void errorColum(int colum);
 
+string topId() {
+	return idTable[idSize];
+}
+
+double topPopIdTable() {
+	double result = idMap.find(topId())->second;
+	cout<<idMap.find(topId())->second<<"\ttopId"<<endl;
+	cout<<topId()<<"\ttopId"<<endl;
+	idSize--;
+	return result;
+}
+
+enum tokens instrucao(enum tokens tk) {
+	enum tokens tk_prox = lexico();
+	
+	if(tk == tk_id) {
+		cout<<tk<<" "<<tk_prox<<endl;
+		cout<<tk<<" "<<idTable[idSize]<<endl;
+		if(tk_prox == tk_atribuicao) {
+			idMap[topId()] = expressao(lexico());
+			cout<<idMap.find(topId())->second<<"\tinstrucao "<<idTable[idSize]<<endl;
+		}
+	}
+	if(stackTokens[stackTokensSize] != tk_ponto_virgula) {
+		cout<<"ERRO:'"<<input[contStr]<<"' espera-se um ';' na coluna: "<<contColum<<endl; 			errorColum(contColum);
+		exit(1);
+	}
+	
+	return tk_prox;
+}
+
 int main() {
 
 	//Lê com espaços
@@ -138,7 +176,17 @@ int main() {
 	popularSpecialSymbol();
 	popularKeyWord();
 	
-	cout<<expressao(lexico())<<endl;
+	enum tokens tk_prox = lexico();
+	while(stackTokens[stackTokensSize] != tk_vazio) {
+		instrucao(stackTokens[stackTokensSize]);
+		tk_prox = lexico();
+		cout<<idMap.find(topId())->second<<"\t1"<<idTable[idSize]<<endl;
+	}
+
+	
+	cout<<idMap.find(topId())->second<<endl;
+	cout<<idTable[idSize]<<endl;
+	
 	return 0;
 }
 
@@ -272,9 +320,15 @@ string convertTokenToString(enum tokens token) {
 
 char PROXIMO() {
 	//Enquanto tiver espaços e \n, vá lendo.
-	while( isspace(input[++contStr]) || input[contStr] == '\n'){
+	while( isspace(input[++contStr]) || input[contStr] == '\n' || input[contStr] == '\t'){
+		contColum++;
+		if(input[contStr] == '\t') {
+
+			contColum += 5;
+			cout<<"é isso mesmo! "<<contColum<<endl;
+		}
 	}
-	
+	contColum++;
 	return input[contStr];
 }
 
@@ -289,7 +343,7 @@ enum tokens lexico() {
 	enum tokens tk = tk_vazio;
 
 	while( isspace(input[contStr]) || input[contStr] == '\n'){
-		contStr++;
+		contStr++; contColum++;
 	}
 	if(input[contStr] != '\0') {
 		atomo = "";
@@ -362,6 +416,7 @@ enum tokens lexico() {
 					tk = convertAtomoToToken(atomo);
 				}else{
 					idTable[++idSize] = atomo;
+					idMap[atomo] = 0;
 					tk = tk_id;
 				}
 			} else {
@@ -372,13 +427,13 @@ enum tokens lexico() {
 					}while( isdigit(prox) );
 				
 					if( isalpha(prox) ) {
-						cout<<"ERRO: '"<<input[contStr]<<"' sufixo inválido em uma constante de inteiros na coluna "<<contStr+1<<endl; errorColum(contStr);
+						cout<<"ERRO: '"<<input[contStr]<<"' sufixo inválido em uma constante de inteiros na coluna "<<contStr<<endl; errorColum(contStr+1);
 						exit(1);
 					}
 					digitTable[++digitSize] = atomo;
 					tk = tk_digit;
 				} else {
-					cout<<"ERRO:'"<<input[contStr]<<"' caracter desconhecido na coluna "<<contStr+1<<endl; errorColum(contStr);
+					cout<<"ERRO:'"<<input[contStr]<<"' caracter desconhecido na coluna "<<contStr+1<<endl; errorColum(contStr+1);
 					exit(1);
 				}
 			}
@@ -398,14 +453,14 @@ double topPopDigitTable() {
 	digitSize--;
 	return result;
 }
-
+/*
 double topPopIdTable() {
 
 	double result = atof( idTable[idSize].c_str() );
 	idSize--;
 	return result;
 }
-
+*/
 bool isMultDivConj(enum tokens tk) {
 	if(tk == tk_mult || tk == tk_div) {
 		return true;
@@ -416,19 +471,19 @@ bool isMultDivConj(enum tokens tk) {
 double fator(enum tokens tk) {
 	double result = 0;
 	switch(tk) {
-		case tk_id:
+		case tk_id: POP(); result = topPopIdTable();
 			break;
 		case tk_digit: POP(); result = topPopDigitTable();
 			break;
 		case tk_abre_parenteses: POP(); result = expressao(lexico());
 			if(stackTokens[stackTokensSize] != tk_fecha_parenteses) {
-				cout<<"ERRO: "<<convertTokenToString(stackTokens[stackTokensSize])<<" . Espera-se um ')' na coluna "<<contStr+1<<endl; errorColum(contStr);
+				cout<<"ERRO: "<<convertTokenToString(stackTokens[stackTokensSize])<<" . Espera-se um ')' na coluna "<<contStr+1<<endl; errorColum(contStr+1);
 				exit(1);
 			}
 			break;
 		case tk_vazio:
 			break;
-		default: cout<<"ERRO: "<<convertTokenToString(tk)<<" espera-se um id, digit, '(' ou um '!'na coluna "<<contStr+1<<endl; errorColum(contStr);
+		default: cout<<"ERRO: "<<convertTokenToString(tk)<<" espera-se um id, digit, '(' ou um '!'na coluna "<<contStr<<endl; errorColum(contStr);
 			exit(1);
 	}
 	
@@ -481,7 +536,7 @@ double expressao(enum tokens tk) {
 	}
 	
 	if(contParenteses < 0) {
-		cout<<"ERRO:"<<convertTokenToString(tk_prox)<<". Parenteses a mais na coluna "<<contStr<<endl; errorColum(contStr-1);
+		cout<<"ERRO:"<<convertTokenToString(tk_prox)<<". Parenteses a mais na coluna "<<contStr<<endl; errorColum(contStr);
 		exit(1);
 	}
 	
