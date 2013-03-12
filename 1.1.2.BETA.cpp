@@ -1,9 +1,11 @@
-/*
-	Interpreter of numeric expressions
-	Author: Victor Jatobá
-	Baseline: 1.0.1 BETA
-	Date: 20/10/11
-*/
+/************************************************************************
+*	Interpreter of numeric expressions
+*	Author: Victor Jatobá
+*	Baseline: 1.1.2 BETA
+*	Date: 27/10/11
+*	Description: Implementando a atribuição de valores a uma variável
+*					Ex: var := (5+2); var2 = var;
+*************************************************************************/
 
 #include <cstdio>
 #include <cstdlib>
@@ -73,17 +75,12 @@ string input;
 set <char> specialSymbol;
 set <string> keyWord;
 
-
 // mapa que associa o atomo ao seu token ou vice-versa
 map <string, enum tokens> tipo;
 map <int, string> tipoInverso;
 map <string, double> idMap;
-/*
-	Interpreter of numeric expressions
-	Author: Victor Jatobá
-	Baseline: 1.0.0 BETA
-	Date: 17/10/11
-*///Preenchimento dos mapas com os tokens e atomos
+
+//Preenchimento dos mapas com os tokens e atomos
 void popularTipo();
 void popularTipoInverso();
 
@@ -112,59 +109,38 @@ char PROXIMO();
 //	Retorna o topo da pilha global de tokens
 enum tokens TOP();
 
-//	Retorna o topo da pilha de digitos
+//	Retorna o topo da pilha de identificadores
+string topId();
+
+//	Retorna o topo da pilha de digitos desempilhando-o logo em seguida
 double topPopDigitTable();
-/*
-//	Retorna o topo da pilha de Identificadores
+
+//	Retorna o topo da pilha de Identificadores desempilhando-o logo em seguida
 double topPopIdTable();
-*/
+
 //	Verifica se o token eh multiplicacao, divisao ou conjunto
 bool isMultDivConj(enum tokens tk);
 
-/*	Transfere a acao do tk especifico, verificando se o tk 
-	passado por paramero eh um Id, digit ou abre_parenteses*/
+/*	Verifica se o tk passado por paramero eh um Id, digit 
+	ou abre_parenteses, realizando uma ação específica para
+	cada condição*/
 double fator(enum tokens tk);
 
-/*	Transfere a acao do tk especifico, verificando se o tk 
-	passado por paramero eh um multiplicacao ou divisao */
+/*	Verifica se o tk passado por paramero eh uma multiplicacao 
+	ou divisao, realizando uma ação específica para cada condição*/
 double termo(enum tokens tk);
 
-/*	Transfere a acao do tk especifico, verificando se o tk 
-	passado por paramero eh um mais ou menos*/
+/*	Verificando se o tk passado por paramero eh um mais ou menos,
+	realizando uma ação específica para cada condição*/
 double expressao(enum tokens tk);
 
+/*	Instrução inicial para verificar se os dois primeiros tk's são 
+	respectivamente	um id e uma atribuição, chamando expressão caso true*/
+void instrucao(enum tokens tk);
+
+/*	Imprime todo o buffer inicial, apontando a posição exata onde está
+	ocorrendo o erro*/
 void errorColum(int colum);
-
-string topId() {
-	return idTable[idSize];
-}
-
-double topPopIdTable() {
-	double result = idMap.find(topId())->second;
-	cout<<idMap.find(topId())->second<<"\ttopId"<<endl;
-	cout<<topId()<<"\ttopId"<<endl;
-	idSize--;
-	return result;
-}
-
-enum tokens instrucao(enum tokens tk) {
-	enum tokens tk_prox = lexico();
-	
-	if(tk == tk_id) {
-		cout<<tk<<" "<<tk_prox<<endl;
-		cout<<tk<<" "<<idTable[idSize]<<endl;
-		if(tk_prox == tk_atribuicao) {
-			idMap[topId()] = expressao(lexico());
-			cout<<idMap.find(topId())->second<<"\tinstrucao "<<idTable[idSize]<<endl;
-		}
-	}
-	if(stackTokens[stackTokensSize] != tk_ponto_virgula) {
-		cout<<"ERRO:'"<<input[contStr]<<"' espera-se um ';' na coluna: "<<contColum<<endl; 			errorColum(contColum);
-		exit(1);
-	}
-	
-	return tk_prox;
-}
 
 int main() {
 
@@ -319,7 +295,7 @@ string convertTokenToString(enum tokens token) {
 }
 
 char PROXIMO() {
-	//Enquanto tiver espaços e \n, vá lendo.
+	//Enquanto tiver espaços, \n e \t vá lendo.
 	while( isspace(input[++contStr]) || input[contStr] == '\n' || input[contStr] == '\t'){
 		contColum++;
 		if(input[contStr] == '\t') {
@@ -334,6 +310,10 @@ char PROXIMO() {
 
 enum tokens TOP() {
 	return stackTokens[stackTokensSize];
+}
+
+string topId() {
+	return idTable[idSize];
 }
 
 enum tokens lexico() {
@@ -416,9 +396,11 @@ enum tokens lexico() {
 					tk = convertAtomoToToken(atomo);
 				}else{
 					idTable[++idSize] = atomo;
-					idMap[atomo] = 0;
 					tk = tk_id;
-				}
+					if(!idExiste(atomo)) {
+						//Variáveis numéricas são inicializadas com 0(zero)
+						idMap[atomo] = 0;
+					}
 			} else {
 				if( isdigit(input[contStr]) ) {
 					do {
@@ -453,14 +435,15 @@ double topPopDigitTable() {
 	digitSize--;
 	return result;
 }
-/*
-double topPopIdTable() {
 
-	double result = atof( idTable[idSize].c_str() );
+double topPopIdTable() {
+	double result = idMap.find(topId())->second;
+	cout<<idMap.find(topId())->second<<"\ttopId"<<endl;
+	cout<<topId()<<"\ttopId"<<endl;
 	idSize--;
 	return result;
 }
-*/
+
 bool isMultDivConj(enum tokens tk) {
 	if(tk == tk_mult || tk == tk_div) {
 		return true;
@@ -541,6 +524,33 @@ double expressao(enum tokens tk) {
 	}
 	
 	return result;
+}
+
+void instrucao(enum tokens tk) {
+	enum tokens tk_prox = lexico();
+	
+	if(tk == tk_id) {
+		cout<<tk<<" "<<tk_prox<<endl;
+		cout<<tk<<" "<<idTable[idSize]<<endl;
+		if(tk_prox == tk_atribuicao) {
+			idMap[topPopId()] = expressao(lexico());
+			cout<<idMap.find(topId())->second<<"\tinstrucao "<<idTable[idSize]<<endl;
+		} else {
+			cout<<"ERRO:'"<<input[contStr]<<"' espera-se um ':=' na coluna: "<<contColum<<endl;
+			errorColum(contColum);
+			exit(1);
+		}
+		// Está faltando o ';' no final?
+		if(stackTokens[stackTokensSize] != tk_ponto_virgula) {
+			cout<<"ERRO:'"<<input[contStr]<<"' espera-se um ';' na coluna: "<<contColum<<endl;
+			errorColum(contColum);
+			exit(1);
+		}
+	}else {
+		cout<<"ERRO:'"<<input[contStr]<<"' espera-se um identificador na coluna: "<<contColum<<endl;
+		errorColum(contColum);
+		exit(1);
+	}
 }
 
 void errorColum(int colum) {
