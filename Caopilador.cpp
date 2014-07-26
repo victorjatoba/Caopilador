@@ -1,10 +1,13 @@
 /************************************************************************
-*	Interpreter of numeric expressions
+*	- Numeric Expressions Interpreter -
+*	Name: Caopilador
 *	Author: Victor Jatobá
-*	Baseline: 1.1.2 BETA
-*	Date: 27/10/11
-*	Description: Implementando a atribuição de valores a uma variável
-*					Ex: var := (5+2); var2 = var;
+*	Baseline: 1.1.3 BETA
+*	Date: 27/10/2011
+*	Description: Analyzer structure:
+*		identificator | assign command | math expression |
+*			semicolon
+*					Ex: var := (5+2);
 *************************************************************************/
 
 #include <cstdio>
@@ -27,21 +30,21 @@ using namespace std;
 enum tokens {
 	tk_abre_parenteses,
 	tk_fecha_parenteses,
-	tk_ponto_virgula, 
-	tk_mais, 
-	tk_menos, 
-	tk_mult, 
-	tk_div, 
+	tk_ponto_virgula,
+	tk_mais,
+	tk_menos,
+	tk_mult,
+	tk_div,
 	tk_begin,
 	tk_end,
 	tk_while,
 	tk_for,
 	tk_if,
 	tk_then,
-	tk_else, 
-	tk_do, 
-	tk_id, 
-	tk_digit, 
+	tk_else,
+	tk_do,
+	tk_id,
+	tk_digit,
 	tk_atribuicao,
 	tk_incrementar,
 	tk_decrementar,
@@ -70,7 +73,7 @@ int contStr = 0, stackTokensSize = -1, contParenteses = 0;
 int contColum = 0;
 string input;
 
-/*	Utilizado para verificar a existencia de um simbolo 
+/*	Utilizado para verificar a existencia de um simbolo
 	especial ou uma palavra chave */
 set <char> specialSymbol;
 set <string> keyWord;
@@ -99,7 +102,9 @@ bool isKeyWord(string word);
 enum tokens convertAtomoToToken(string atomo);
 string convertTokenToString(enum tokens token);
 
-/*  Funcao que identifica letras, digitos, simbolos 
+bool idExiste(string id);
+
+/*  Funcao que identifica letras, digitos, simbolos
 	especiais (simples e compostos) e palavras reservadas*/
 enum tokens lexico();
 
@@ -121,12 +126,12 @@ double topPopIdTable();
 //	Verifica se o token eh multiplicacao, divisao ou conjunto
 bool isMultDivConj(enum tokens tk);
 
-/*	Verifica se o tk passado por paramero eh um Id, digit 
+/*	Verifica se o tk passado por paramero eh um Id, digit
 	ou abre_parenteses, realizando uma ação específica para
 	cada condição*/
 double fator(enum tokens tk);
 
-/*	Verifica se o tk passado por paramero eh uma multiplicacao 
+/*	Verifica se o tk passado por parametro eh uma multiplicacao
 	ou divisao, realizando uma ação específica para cada condição*/
 double termo(enum tokens tk);
 
@@ -134,7 +139,7 @@ double termo(enum tokens tk);
 	realizando uma ação específica para cada condição*/
 double expressao(enum tokens tk);
 
-/*	Instrução inicial para verificar se os dois primeiros tk's são 
+/*	Instrução inicial para verificar se os dois primeiros tk's são
 	respectivamente	um id e uma atribuição, chamando expressão caso true*/
 void instrucao(enum tokens tk);
 
@@ -151,18 +156,17 @@ int main() {
 	popularTipoInverso();
 	popularSpecialSymbol();
 	popularKeyWord();
-	
+
 	enum tokens tk_prox = lexico();
 	while(stackTokens[stackTokensSize] != tk_vazio) {
 		instrucao(stackTokens[stackTokensSize]);
 		tk_prox = lexico();
-		cout<<idMap.find(topId())->second<<"\t1"<<idTable[idSize]<<endl;
+//		cout<<idMap.find(topId())->second<<"\t1"<<idTable[idSize]<<endl;
+//        cout << tk_prox <<" ";
 	}
 
-	
-	cout<<idMap.find(topId())->second<<endl;
-	cout<<idTable[idSize]<<endl;
-	
+	cout<<idTable[idSize]<<" = "<<idMap.find(topId())->second<<endl;
+
 	return 0;
 }
 
@@ -223,7 +227,7 @@ void popularTipoInverso() {
 	tipoInverso[19] = "tk_decrementar";
 	tipoInverso[20] = "tk_igual";
 	tipoInverso[21] = "tk_diferente_de";
-	tipoInverso[22] = "tk_not";	
+	tipoInverso[22] = "tk_not";
 	tipoInverso[23] = "tk_menor_que";
 	tipoInverso[24] = "tk_maior_que";
 	tipoInverso[25] = "tk_menor_igual";
@@ -248,7 +252,7 @@ void popularSpecialSymbol() {
 	specialSymbol.insert(')');
 	specialSymbol.insert('!');
 	specialSymbol.insert('<');
-	specialSymbol.insert('>');	
+	specialSymbol.insert('>');
 }
 
 void popularKeyWord() {
@@ -269,7 +273,7 @@ void popularKeyWord() {
 bool isSpecialSymbol(char simbolo) {
 	set<char>::iterator it;
 	it = specialSymbol.find(simbolo);
-	
+
 	if(it != specialSymbol.end()) {
 		return true;
 	}
@@ -279,7 +283,7 @@ bool isSpecialSymbol(char simbolo) {
 bool isKeyWord(string word) {
 	set<string>::iterator it;
 	it = keyWord.find(word);
-	
+
 	if(it != keyWord.end()) {
 		return true;
 	}
@@ -301,7 +305,7 @@ char PROXIMO() {
 		if(input[contStr] == '\t') {
 
 			contColum += 5;
-			cout<<"é isso mesmo! "<<contColum<<endl;
+			//cout<<"Achei um \\t! "<<contColum<<endl;
 		}
 	}
 	contColum++;
@@ -317,7 +321,7 @@ string topId() {
 }
 
 enum tokens lexico() {
-	
+
 	char ant, prox;
 	string atomo;
 	enum tokens tk = tk_vazio;
@@ -327,7 +331,7 @@ enum tokens lexico() {
 	}
 	if(input[contStr] != '\0') {
 		atomo = "";
-		
+
 		if( isSpecialSymbol(input[contStr]) ) {
 			ant = input[contStr];
 			prox = PROXIMO();
@@ -390,7 +394,7 @@ enum tokens lexico() {
 					atomo += input[contStr];
 					prox = PROXIMO();
 				}while( isalnum(prox) || prox == '_');
-				
+
 				if( isKeyWord(atomo) ) {
 					keyWordTable[++keyWordSize] = atomo;
 					tk = convertAtomoToToken(atomo);
@@ -401,35 +405,43 @@ enum tokens lexico() {
 						//Variáveis numéricas são inicializadas com 0(zero)
 						idMap[atomo] = 0;
 					}
+				}
 			} else {
 				if( isdigit(input[contStr]) ) {
 					do {
 						atomo += input[contStr];
 						prox = PROXIMO();
 					}while( isdigit(prox) );
-				
+
 					if( isalpha(prox) ) {
-						cout<<"ERRO: '"<<input[contStr]<<"' sufixo inválido em uma constante de inteiros na coluna "<<contStr<<endl; errorColum(contStr+1);
+						cout<<"ERRO: '"<<input[contStr]<<"' sufixo inválido em uma constante de inteiros na coluna "<<contStr+1<<endl; errorColum(contColum);
 						exit(1);
 					}
 					digitTable[++digitSize] = atomo;
 					tk = tk_digit;
 				} else {
-					cout<<"ERRO:'"<<input[contStr]<<"' caracter desconhecido na coluna "<<contStr+1<<endl; errorColum(contStr+1);
+					cout<<"ERRO:'"<<input[contStr]<<"' caracter desconhecido na coluna "<<contStr+1<<endl; errorColum(contColum);
 					exit(1);
 				}
 			}
 
 		}
 	}
-	
+
 	PUSH(tk);
 //	cout<<"stackTk["<<stackTokensSize<<"] = "<<convertTokenToString(stackTokens[stackTokensSize])<<endl;
 	return tk;
 }
 
+bool idExiste(string id) {
+	if(idMap.find(id) != idMap.end() ) {
+		return true;
+	}
+	return false;
+}
+
 double topPopDigitTable() {
-	/* string.c_str() usado para converter um container 
+	/* string.c_str() usado para converter um container
 		tipo string para vetor de caracteres do C */
 	double result = atof( digitTable[digitSize].c_str() );
 	digitSize--;
@@ -438,8 +450,8 @@ double topPopDigitTable() {
 
 double topPopIdTable() {
 	double result = idMap.find(topId())->second;
-	cout<<idMap.find(topId())->second<<"\ttopId"<<endl;
-	cout<<topId()<<"\ttopId"<<endl;
+//	cout<<idMap.find(topId())->second<<"\ttopId"<<endl;
+//	cout<<topId()<<"\ttopId"<<endl;
 	idSize--;
 	return result;
 }
@@ -469,17 +481,17 @@ double fator(enum tokens tk) {
 		default: cout<<"ERRO: "<<convertTokenToString(tk)<<" espera-se um id, digit, '(' ou um '!'na coluna "<<contStr<<endl; errorColum(contStr);
 			exit(1);
 	}
-	
+
 //	cout<<"Fator: r="<<result<<"\tprox="<<convertTokenToString(tk)<<endl;
 	return result;
 }
 
 double termo(enum tokens tk) {
-	
+
 	double result = fator(tk);
 	enum tokens tk_prox = lexico();
 //	cout<<"Termo: r="<<result<<"\tprox="<<convertTokenToString(tk_prox)<<endl;
-	
+
 	while(isMultDivConj(tk_prox)) {
 
 //		cout<<"Termo1: r="<<result<<"\tprox="<<convertTokenToString(tk_prox)<<endl;
@@ -488,20 +500,20 @@ double termo(enum tokens tk) {
 				break;
 			case tk_div: POP(); result /= fator( lexico() );
 				break;
-			case tk_vazio: 
+			case tk_vazio:
 				break;
 			default: cout<<"ERRO:"<<convertTokenToString(tk_prox)<<" Espera-se um operador '+' ou '-'na coluna "<<contStr+1<<endl; exit(1);
 		}
 		tk_prox = lexico();
 	}
-	
+
 	return result;
 }
 
 double expressao(enum tokens tk) {
 	double result = termo(tk);
 	enum tokens tk_prox = stackTokens[stackTokensSize];
-//		cout<<"EX: r="<<result<<"\tprox="<<convertTokenToString(tk_prox)<<endl;	
+//		cout<<"EX: r="<<result<<"\tprox="<<convertTokenToString(tk_prox)<<endl;
 	while(tk_prox == tk_mais || tk_prox == tk_menos) {
 
 		switch( tk_prox ) {
@@ -509,32 +521,32 @@ double expressao(enum tokens tk) {
 				break;
 			case tk_menos: POP(); result -= termo( lexico() );
 				break;
-			case tk_vazio: 
+			case tk_vazio:
 				break;
-			default: cout<<"ERRO:"<<convertTokenToString(tk_prox)<<" Espera-se um operador '+' ou '-'na coluna "<<contStr+1<<endl; errorColum(contStr);
+			default: cout<<"ERRO:"<<convertTokenToString(tk_prox)<<" Espera-se um operador '+' ou '-'na coluna "<<contStr+1<<endl; errorColum(contColum);
 				exit(1);
 		}
 		tk_prox = stackTokens[stackTokensSize];
 //		cout<<"EX1: r="<<result<<"\tprox="<<convertTokenToString(tk_prox)<<endl;
 	}
-	
+
 	if(contParenteses < 0) {
-		cout<<"ERRO:"<<convertTokenToString(tk_prox)<<". Parenteses a mais na coluna "<<contStr<<endl; errorColum(contStr);
+		cout<<"ERRO:"<<convertTokenToString(tk_prox)<<". Parenteses a mais na coluna "<<contStr+1<<endl; errorColum(contColum);
 		exit(1);
 	}
-	
+
 	return result;
 }
 
 void instrucao(enum tokens tk) {
 	enum tokens tk_prox = lexico();
-	
+
 	if(tk == tk_id) {
-		cout<<tk<<" "<<tk_prox<<endl;
-		cout<<tk<<" "<<idTable[idSize]<<endl;
+//		cout<<tk<<" "<<tk_prox<<endl;
+//		cout<<tk<<" "<<idTable[idSize]<<endl;
 		if(tk_prox == tk_atribuicao) {
-			idMap[topPopId()] = expressao(lexico());
-			cout<<idMap.find(topId())->second<<"\tinstrucao "<<idTable[idSize]<<endl;
+			idMap[topId()] = expressao(lexico());
+//			cout<<idMap.find(topId())->second<<"\tinstrucao "<<idTable[idSize]<<endl;
 		} else {
 			cout<<"ERRO:'"<<input[contStr]<<"' espera-se um ':=' na coluna: "<<contColum<<endl;
 			errorColum(contColum);
@@ -558,8 +570,7 @@ void errorColum(int colum) {
 	FOR(i, colum) {
 		espaco += ' ';
 	}
-	
+
 	cout<<input<<endl;
 	cout<<espaco<<"^"<<endl;
 }
-
